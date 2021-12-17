@@ -18,23 +18,17 @@
     <form id="form1" runat="server">
         <div>
             <asp:FileUpload ID="FileUpload1" runat="server" />
-            <asp:Button ID="Button1" runat="server" Text="Predict" OnClick="Button1_Click" />
+            <asp:Button ID="PredictButton" runat="server" Text="Predict" OnClick="Button1_Click" />
             <asp:DropDownList ID="DropDownList1" runat="server" style="margin-bottom: 0px">
             </asp:DropDownList>
             <asp:Label ID="Label1" runat="server" Text="Label"></asp:Label>
-            <asp:Image ID="Image1" runat="server"/>
+            <%--<asp:Image ID="Image1" runat="server"/>--%>
             <br />
-            <asp:Repeater ID="RepeaterImages" runat="server">
-                    <ItemTemplate>
-                        <asp:Image ID="Image" runat="server" ImageUrl='<%# Container.DataItem %>' />
-                    </ItemTemplate>
-                </asp:Repeater>
             <br />
             <div id="ListViewBox">
                 <asp:ListView ID="ListView1" runat="server" >
                     <ItemTemplate>
                         <asp:Image ID="Image" runat="server" ImageUrl='<%# Container.DataItem %>' />
-                        <%--<asp:Image ID="ItemImage" runat="server" ImageUrl='<%# BuildItemImageUrl(Eval("Id", "{0}")) %>'/>--%>
                     </ItemTemplate>
                 </asp:ListView>
             </div>

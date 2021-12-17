@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -14,8 +15,15 @@ namespace PredictorWeb
 {
     public partial class Predictor : System.Web.UI.Page
     {
-        string imgFileName;
-        List<string> imgName = new List<string>(); //存照片名
+        string imgFileUrl = "http://127.0.0.1:8080/";
+        string pyFileUrl = "C:\\Users\\莊舒雅\\Desktop\\Test_jj\\PredictorWeb\\PredictorWeb\\bin\\";
+        //List<string> imgName = new List<string>(); //存照片名
+        List<string> resultString = new List<string>(); //存分析結果
+        double[,] gnbArray = new double[48, 2];
+        double[,] gpbArray = new double[48, 2];
+        double[,] gpcArray = new double[48, 2];
+        double[,] chainArray = new double[48, 2];
+        double[,] yeastArray = new double[48, 2];
         protected void Page_Load(object sender, EventArgs e)
         {
             ArrayList a = new ArrayList();
@@ -97,26 +105,18 @@ namespace PredictorWeb
                 //If Directory (Folder) does not exists Create it.
                 Directory.CreateDirectory(folderPath);
             }
-            //determine wether duplicate name
+
             DateTime today = DateTime.Today;
             Console.WriteLine(today.ToString("yyMMddhhmmss"));
             string newName = Path.GetFileName(FileUpload1.FileName) + today.ToString("yyMMddhhmmss");
             string newPath= folderPath + newName;
-            //if (File.Exists(savePath))
-            //{
-            //    savePath = folderPath + Path.GetFileName(FileUpload1.FileName+"_1");
-            //}
 
             //Save the File to the Directory (Folder).
             FileUpload1.SaveAs(newPath+".JPG");
 
             //Display the Picture in Image control.
-            Image1.ImageUrl = "~/Images/" + newName+".JPG";
+            //Image1.ImageUrl = "~/Images/" + newName+".JPG";
 
-            //change 
-
-
-            //String imagePath = HttpRuntime.AppDomainAppPath + "images/" + Path.GetFileName(FileUpload1.FileName) + today.ToString("yyyyMMdd")+ ".JPG";
             Image myImg = Image.FromFile(newPath + ".JPG");
 
             int picWidth = 200;
@@ -143,25 +143,105 @@ namespace PredictorWeb
                                      new Rectangle(picWidth * idxX, picHeight * idxY, picWidth, picHeight),
                                      //指定被切割的圖片要繪製的部分
                                      GraphicsUnit.Pixel);
-                    //imgName.Add(imgN + "-" + imgCount.ToString());
-                   
-                   // string savePath = HttpRuntime.AppDomainAppPath + imgName[imgCount]+ ".JPG";
                     
                     pic.Save(newPath+ "-" + imgCount.ToString() + ".JPG");
 
-                    //  Image1.ImageUrl = folderPath + imgName[imgCount];
-                    images.Add("http://127.0.0.1:8080/" + "images/"+newName + "-" + imgCount.ToString() + ".JPG");
-                    display.Add(pic);
-                imgCount++;
-                    
+                    images.Add(imgFileUrl + "images/"+newName + "-" + imgCount.ToString() + ".JPG");
+                    imgCount++;
                 }
 
             }
-            //ListView1.size = new Size(1600, 1200);
             ListView1.DataSource= images;
+
             ListView1.DataBind();
-            RepeaterImages.DataSource = images;
-            RepeaterImages.DataBind();
+            Prediction();
+        }
+
+        private void Prediction()
+        {
+            int gnbCount = 0;
+            int gpbCount = 0;
+            int gpcCount = 0;
+            int chainCount = 0;
+            int yeastCount = 0;
+
+            Label1.Text = "分析中..........";
+            FileUpload1.Enabled = false;
+            PredictButton.Enabled = false;
+
+            runPythonCode("gnbPredict.exe");
+            loadTxt("gnb.txt", 1);
+        }
+        public void runPythonCode(string fileName) //分類機
+        {
+            //----------------run python exe file
+            //string pyexePath = "C:\\Users\\莊舒雅\\Downloads\\Code-20211212T070334Z-001\\Code\\predictor2\\bin\\Debug\\gnbPredict.exe"; //fileName;
+            Process p = new Process();
+            p.StartInfo.FileName = pyFileUrl+ fileName;//需要執行的檔案路徑
+            p.StartInfo.UseShellExecute = false; //必需
+            p.StartInfo.RedirectStandardOutput = true;//輸出引數設定
+            p.StartInfo.RedirectStandardInput = true;//傳入引數設定
+            p.StartInfo.CreateNoWindow = true;
+            p.StartInfo.Arguments = " ";//引數以空格分隔，如果某個引數為空，可以傳入””
+            p.Start();
+            string outputText = p.StandardOutput.ReadToEnd();
+            outputText = outputText.Replace(Environment.NewLine, string.Empty);
+            p.WaitForExit();//關鍵，等待外部程式退出後才能往下執行}
+            p.Close();
+        } //run python code to predicted
+
+        public void loadTxt(string fileN, int classT) //讀檔
+        {
+            string fileName = fileN;
+            StreamReader sr = new StreamReader(pyFileUrl+fileName);
+            while (!sr.EndOfStream)
+            {
+                // 每次讀取一行，直到檔尾
+                // 讀取文字到 line 變數
+                string line = sr.ReadLine();
+                //textBox1.Text += line+"\n";
+                resultString.Add(line);
+                //readCount++;       
+            }
+            sr.Close();
+            //int readCount = 0;
+            foreach (string word in resultString)
+            {
+                string[] resStr = word.Split(':');
+
+                string tempStr = resStr[0];
+                tempStr = tempStr.Split('.')[0];
+                tempStr = tempStr.Split('-')[tempStr.Split('-').Length - 1];
+                int index = int.Parse(tempStr);
+
+                string res = resStr[1];
+                string res2 = resStr[2];
+                if (classT == 1)
+                {
+                    gnbArray[index, 0] = Convert.ToDouble(res);
+                    gnbArray[index, 1] = Convert.ToDouble(res2);
+                }
+                else if (classT == 2)
+                {
+                    gpbArray[index, 0] = Convert.ToDouble(res);
+                    gpbArray[index, 1] = Convert.ToDouble(res2);
+                }
+                else if (classT == 3)
+                {
+                    gpcArray[index, 0] = Convert.ToDouble(res);
+                    gpcArray[index, 1] = Convert.ToDouble(res2);
+                }
+                else if (classT == 4)
+                {
+                    chainArray[index, 0] = Convert.ToDouble(res);
+                    chainArray[index, 1] = Convert.ToDouble(res2);
+                }
+                else if (classT == 5)
+                {
+                    yeastArray[index, 0] = Convert.ToDouble(res);
+                    yeastArray[index, 1] = Convert.ToDouble(res2);
+                }
+            }
         }
     }
 }
